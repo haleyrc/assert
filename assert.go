@@ -7,6 +7,14 @@ import (
 	"testing"
 )
 
+type EmptyReporter interface {
+	IsEmpty() bool
+}
+
+type ZeroReporter interface {
+	IsZero() bool
+}
+
 type ErrorPredicate func(err error) (string, bool)
 
 type Assert struct {
@@ -97,6 +105,29 @@ func (a *Assert) Fatal() {
 	if failed {
 		a.t.FailNow()
 	}
+}
+
+func (a *Assert) NotEmpty(label string, value interface{}) *Assert {
+	a.t.Helper()
+	a.failed = false
+
+	switch v := value.(type) {
+	case EmptyReporter:
+		a.failed = v.IsEmpty()
+	case ZeroReporter:
+		a.failed = v.IsZero()
+	case string:
+		a.failed = v == ""
+	default:
+		err := fmt.Errorf("assert/NotEmpty: unhandled type %T for value %v", value, value)
+		panic(err)
+	}
+
+	if a.failed {
+		a.t.Errorf("expected %s to not be empty, but it was", label)
+	}
+
+	return a
 }
 
 func (a *Assert) OK(err error) *Assert {
